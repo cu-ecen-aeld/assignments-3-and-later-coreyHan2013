@@ -10,5 +10,9 @@ elif [ $# = 1 ]; then
 fi
 
 mkdir -p $(dirname $1) && touch $1
+if [ $? -ne 0 ]; then
+	echo "couldn't create file $1"
+	exit 1
+fi
 echo $2 > $1
 
