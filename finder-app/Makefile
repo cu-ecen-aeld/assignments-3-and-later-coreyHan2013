@@ -1,13 +1,13 @@
-SRC := writer.c
-TARGET = writer
-CROSS_COMPILE :=
-CC=${CROSS_COMPILE}gcc
-CFLAGS := -g -Wall
+TARGET		 = writer
+CROSS_COMPILE	?=
+CC		 =$(CROSS_COMPILE)gcc
+CFLAGS		:= -g -Wall
+SRC		:= writer.c
 
 all: $(TARGET)
 
 $(TARGET) : $(SRC)
-	$(CROSS_COMPILE)gcc $(CFLAGS) -o $(TARGET) $^
+	$(CC) $(CFLAGS) -o $(TARGET) $^
 
 clean:
 	-rm -f *.o $(TARGET)
