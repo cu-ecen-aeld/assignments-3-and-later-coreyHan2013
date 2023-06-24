@@ -24,9 +24,9 @@ bool do_system(const char *cmd)
 
     ret = system(cmd);
     if (WIFEXITED(ret) && (WEXITSTATUS(ret)==0))
-	    return true;
+        return true;
     else
-	    return false;
+        return false;
 }
 
 /**
@@ -70,25 +70,25 @@ bool do_exec(int count, ...)
 
     va_end(args);
 
-	int status;
-	pid_t pid;
+    int status;
+    pid_t pid;
 
-	pid = fork ();
-	if (pid == -1)
-		return false;
-	else if (pid == 0) {
-		execv (command[0], command);
-		exit(-1);
-	}
-	if (waitpid (pid, &status, 0) == -1)
-		return false;
-	if (WIFEXITED (status)) {
-		if (WEXITSTATUS (status) == 0)
-			return true;
-		else
-			return false;
-	}
-	return false;
+    pid = fork ();
+    if (pid == -1)
+        return false;
+    else if (pid == 0) {
+        execv (command[0], command);
+        exit(-1);
+    }
+    if (waitpid (pid, &status, 0) == -1)
+        return false;
+    if (WIFEXITED (status)) {
+        if (WEXITSTATUS (status) == 0)
+            return true;
+        else
+            return false;
+    }
+    return false;
 }
 
 /**
@@ -121,36 +121,36 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 
     va_end(args);
 
-	int status;
-	pid_t pid;
+    int status;
+    pid_t pid;
 
-	int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
-	if (fd < 0) {
-		perror("open");
-		return false;
-	}
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if (fd < 0) {
+        perror("open");
+        return false;
+    }
 
-	pid = fork();
-	if (pid == -1)
-		return false;
-	else if (pid == 0) {
-		if (dup2(fd, 1) < 0) {
-			perror("dup2");
-			exit(-1);
-		}
-		close(fd);
-		execv (command[0], command);
-		perror("execv");
-		exit(-1);
-	}
-	close(fd);
-	if (waitpid (pid, &status, 0) == -1)
-		return false;
-	if (WIFEXITED (status)) {
-		if (WEXITSTATUS (status) == 0)
-			return true;
-		else
-			return false;
-	}
-	return false;
+    pid = fork();
+    if (pid == -1)
+        return false;
+    else if (pid == 0) {
+        if (dup2(fd, 1) < 0) {
+            perror("dup2");
+            exit(-1);
+        }
+        close(fd);
+        execv (command[0], command);
+        perror("execv");
+        exit(-1);
+    }
+    close(fd);
+    if (waitpid (pid, &status, 0) == -1)
+        return false;
+    if (WIFEXITED (status)) {
+        if (WEXITSTATUS (status) == 0)
+            return true;
+        else
+            return false;
+    }
+    return false;
 }
