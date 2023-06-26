@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 if [ $# = 0 ]; then
 	echo "missing first parameter: filesdir"
@@ -14,7 +14,7 @@ if [ ! -d $1 ]; then
 	exit 1
 fi
 
-FILE_NO=`grep -d recurse -l $2 $1/* | wc -l`
-LINE_NO=`grep -d recurse -o $2 $1/* | wc -l`
+FILE_NO=`find $1/ -type f | wc -l`
+LINE_NO=`grep -r -o $2 $1/* | wc -l`
 echo "The number of files are $FILE_NO and the number of matching lines are $LINE_NO"
 

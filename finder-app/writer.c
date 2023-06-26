@@ -38,14 +38,18 @@ int main(int argc, char **argv)
 	if (nr == -1) {
 		syslog(LOG_ERR, "Write file error: %s", strerror(errno));
 		printf("Write file errno: %d, meaning: %s\n", errno, strerror(errno));
+		close(fd);
 		exit(1);
 	}
 	else if (nr != count) {
 		syslog(LOG_ERR, "Only %ld out of %d part of string has been written to the file", nr, count);
 		printf("error: Not the whole string has been written to the file!\n");
+		close(fd);
 		exit(1);
 	}
 
+	close(fd);
 	syslog(LOG_DEBUG, "successfully wrote the string");
+	closelog();
 	printf("successfully wrote the string\n");
 }
