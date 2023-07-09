@@ -15,13 +15,17 @@
 #define PORT 9000
 #define BUF_SIZE 65535
 
+#define DEBUG_LOG(msg,...)
+//#define DEBUG_LOG(msg,...) printf("socket: " msg "\n" , ##__VA_ARGS__)
+#define ERROR_LOG(msg,...) printf("socket ERROR: " msg "\n" , ##__VA_ARGS__)
+
 const char *tmp_file = "/var/tmp/aesdsocketdata";
 volatile bool caught_sig = false;
 
 static void signal_handler(int signal_number)
 {
     if (signal_number == SIGTERM || signal_number == SIGINT)
-    caught_sig = true;
+        caught_sig = true;
 }
 
 static void set_signal_handler()
@@ -31,12 +35,12 @@ static void set_signal_handler()
     memset(&new_action, 0, sizeof(struct sigaction));
     new_action.sa_handler = signal_handler;
     if (sigaction(SIGTERM, &new_action, NULL) != 0) {
-        printf("Error %d (%s) registering for SIGTERM\n", errno, strerror(errno));
+        ERROR_LOG("Error %d (%s) registering for SIGTERM", errno, strerror(errno));
         syslog(LOG_ERR, "Error %d (%s) registering for SIGTERM", errno, strerror(errno));
         exit(-1);
     }
     if (sigaction(SIGINT, &new_action, NULL) != 0) {
-        printf("Error %d (%s) registering for SIGINT\n", errno, strerror(errno));
+        ERROR_LOG("Error %d (%s) registering for SIGINT", errno, strerror(errno));
         syslog(LOG_ERR, "Error %d (%s) registering for SIGINT", errno, strerror(errno));
         exit(-1);
     }
@@ -48,21 +52,21 @@ static void socket_service(int server_fd)
     int new_socket, fd;
     struct sockaddr address;
     ssize_t recv_len, read_len;
-    int addrlen;
+    int addrlen = 0;
     char ipstr[INET6_ADDRSTRLEN];
 
     fd = open(tmp_file, O_RDWR | O_CREAT | O_TRUNC,
               S_IRWXU | S_IRWXG | S_IROTH);
     if (fd == -1) {
         syslog(LOG_ERR, "Open file error: %s", strerror(errno));
-        printf("Open file errno: %d, meaning: %s\n", errno, strerror(errno));
+        ERROR_LOG("Open file errno: %d, meaning: %s", errno, strerror(errno));
         exit(-1);
     }
 
     buffer = (char *)malloc(BUF_SIZE);
     memset(buffer, 0, BUF_SIZE);
 
-    printf("server is listening at port: %d\n", PORT);
+    DEBUG_LOG("server is listening at port: %d", PORT);
     while (!caught_sig) {
         memset(&address, 0, sizeof(struct sockaddr));
         if ((new_socket
@@ -71,7 +75,7 @@ static void socket_service(int server_fd)
             if (caught_sig)
                 break;
             syslog(LOG_ERR, "accept failed");
-            printf("Error %d (%s) accept\n", errno, strerror(errno));
+            ERROR_LOG("Error %d (%s) accept", errno, strerror(errno));
             exit(-1);
         }
         if (address.sa_family == AF_INET6) { // AF_INET6
@@ -83,17 +87,16 @@ static void socket_service(int server_fd)
         }
 
         syslog(LOG_DEBUG, "Accepted connection from %s", ipstr);
-        printf("Accepted connection from %s\n", ipstr);
+        DEBUG_LOG("Accepted connection from %s", ipstr);
         ssize_t start = 0;
         do {
             start += recv(new_socket, &buffer[start], BUF_SIZE, 0);
         } while (buffer[start-1] != '\n');
         recv_len = start;
 
-        printf("%s\n", buffer);
+        DEBUG_LOG("len=%ld, packet=%s", recv_len, buffer);
         lseek(fd, 0, SEEK_END);
         write(fd, buffer, recv_len);
-        printf("write to file, len=%ld\n", recv_len);
         memset(buffer, 0, recv_len);
 
         lseek(fd, 0, SEEK_SET);
@@ -107,9 +110,8 @@ static void socket_service(int server_fd)
             }
             if (buffer[start] == '\n') {
                 read_len = start + 1;
-                printf("read length is %ld, contents: %s\n", read_len, buffer);
+                DEBUG_LOG("read length is %ld, contents: %s", read_len, buffer);
                 ssize_t send_len = send(new_socket, buffer, read_len, 0);
-                printf("sent to client, len=%ld\n", send_len);
                 memset(buffer, 0, send_len);
                 start = 0;
             } else
@@ -117,7 +119,7 @@ static void socket_service(int server_fd)
         }
         close(new_socket);
         syslog(LOG_DEBUG, "Closed connection from %s", ipstr);
-        printf("Closed connection from %s\n", ipstr);
+        DEBUG_LOG("Closed connection from %s", ipstr);
     }
 
     free(buffer);
@@ -156,12 +158,12 @@ int main(int argc, char **argv)
     }
 
     if ((argc > 1) && (strcmp(argv[1], "-d") == 0)) {
-        printf("Server will be put on daemon\n");
+        DEBUG_LOG("Server will be put on daemon");
         pid = fork ();
         if (pid == -1)
             return -1;
         else if (pid != 0) {
-            printf("parent exits\n");
+            DEBUG_LOG("parent exits");
             syslog(LOG_DEBUG, "parent exits");
             closelog();
             exit(EXIT_SUCCESS);
@@ -198,6 +200,6 @@ int main(int argc, char **argv)
     shutdown(server_fd, SHUT_RDWR);
     syslog(LOG_DEBUG, "Successfully cleaned up");
     closelog();
-    printf("Successfully cleaned up\n");
+    DEBUG_LOG("Successfully cleaned up");
     return 0;
 }
