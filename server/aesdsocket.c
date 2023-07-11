@@ -56,8 +56,7 @@ static void socket_service(int server_fd)
     int addrlen = 0;
     char ipstr[INET6_ADDRSTRLEN];
 
-    fd = open(tmp_file, O_RDWR | O_CREAT | O_TRUNC,
-              S_IRWXU | S_IRWXG | S_IROTH);
+    fd = open(tmp_file, O_RDWR | O_CREAT | O_TRUNC, 0664);
     if (fd == -1) {
         syslog(LOG_ERR, "Open file error: %s", strerror(errno));
         ERROR_LOG("Open file errno: %d, meaning: %s", errno, strerror(errno));
