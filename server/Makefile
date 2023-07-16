@@ -7,7 +7,7 @@ SRC		:= aesdsocket.c
 all: $(TARGET)
 
 $(TARGET) : $(SRC)
-	$(CC) $(CFLAGS) -o $(TARGET) $^
+	$(CC) $(CFLAGS) -o $(TARGET) $^ -lrt -pthread
 
 clean:
 	-rm -f *.o $(TARGET)
