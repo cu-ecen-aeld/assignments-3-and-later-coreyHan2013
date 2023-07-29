@@ -58,5 +58,8 @@ Code: d2800001 d2800000 d503233f d50323bf (b900003f)
   14:	b900003f 	str	wzr, [x1]
 ```
 The error happens at "14:   b900003f        str     wzr, [x1]"
-  - from first line of the message, "Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000", we know when the error happens, the function try to write memory "0"
+  - from first line of the message, "Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000", we know when the error happens, the function try to write memory "0", i.e. on the first statement:
+```
+    *(int *)0 = 0;
+```
 
