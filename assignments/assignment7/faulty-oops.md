@@ -1,4 +1,5 @@
-1. Run echo command and get the below error message:
+1. Ran echo command and got the below error message:
+```
 # echo "hello_world" > /dev/faulty
 Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
 Mem abort info:
@@ -42,17 +43,20 @@ Call trace:
  el0t_64_sync+0x1a0/0x1a4
 Code: d2800001 d2800000 d503233f d50323bf (b900003f) 
 ---[ end trace c9e774ab762055fa ]---
+```
 
 2. Analysis
-  - from "Call trace: " and "pc :", we know that the error happens at 0x14 of function "faulty__rite"
+  - from "Call trace: " and "pc :", we know that the error happens at 0x14 of function "faulty\_rite"
   - run objdump, show the assembly, we can get that:
-0000000000000000 <faulty_write>:
+```
+0000000000000000 <faulty\_write>:
    0:	d503245f 	bti	c
    4:	d2800001 	mov	x1, #0x0                   	// #0
    8:	d2800000 	mov	x0, #0x0                   	// #0
    c:	d503233f 	paciasp
   10:	d50323bf 	autiasp
   14:	b900003f 	str	wzr, [x1]
+```
 The error happens at "14:   b900003f        str     wzr, [x1]"
   - from first line of the message, "Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000", we know when the error happens, the function try to write memory "0"
 
