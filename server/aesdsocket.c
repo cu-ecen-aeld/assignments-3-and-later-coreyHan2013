@@ -22,7 +22,12 @@
 #define DEBUG_LOG(msg,...) printf("socket: " msg "\n" , ##__VA_ARGS__)
 #define ERROR_LOG(msg,...) printf("socket ERROR: " msg "\n" , ##__VA_ARGS__)
 
+#if defined(USE_AESD_CHAR_DEVICE)
+const char *tmp_file = "/dev/aesdchar";
+#else
 const char *tmp_file = "/var/tmp/aesdsocketdata";
+#endif
+
 volatile bool caught_sig = false;
 
 struct file_info {
@@ -136,6 +141,7 @@ static void *handle_connection(void *arg)
     }
 }
 
+#if !defined(USE_AESD_CHAR_DEVICE)
 static void timer_thread(union sigval sigval)
 {
     struct thread_param *param = (struct thread_param *)sigval.sival_ptr;
@@ -165,18 +171,20 @@ static void timer_thread(union sigval sigval)
             ERROR_LOG("Error %d (%s) unlocking thread data!\n", errno, strerror(errno));
     }
 }
+#endif
 
 static void socket_service(int server_fd)
 {
     int addrlen = 0;
     struct file_info finfo;
+    struct sigevent sev;
+#if !defined(USE_AESD_CHAR_DEVICE)
     int clock_id = CLOCK_REALTIME;
     timer_t timerid = 0;
-    struct sigevent sev;
     struct thread_param td;
+#endif
 
     memset(&sev, 0, sizeof(struct sigevent));
-    memset(&td, 0, sizeof(struct thread_param));
 
     finfo.fd = open(tmp_file, O_RDWR | O_CREAT | O_TRUNC, 0664);
     if (finfo.fd == -1) {
@@ -190,7 +198,8 @@ static void socket_service(int server_fd)
         ERROR_LOG("init mutex errno: %d, meaning: %s", errno, strerror(errno));
         exit(-1);
     }
-
+#if !defined(USE_AESD_CHAR_DEVICE)
+    memset(&td, 0, sizeof(struct thread_param));
     td.info = &finfo;
     sev.sigev_notify = SIGEV_THREAD;
     sev.sigev_value.sival_ptr = &td;
@@ -208,6 +217,7 @@ static void socket_service(int server_fd)
 
         timer_settime(timerid, 0, &its, NULL);
     }
+#endif
 
     struct thread_node *head = malloc(sizeof(struct thread_node));
     memset(head, 0, sizeof(struct thread_node));
@@ -251,7 +261,10 @@ static void socket_service(int server_fd)
     }
     free(head);
 
+    close(finfo.fd);
+#if !defined(USE_AESD_CHAR_DEVICE)
     remove(tmp_file);
+#endif
 }
 
 int main(int argc, char **argv)
