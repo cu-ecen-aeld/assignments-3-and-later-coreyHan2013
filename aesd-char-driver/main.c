@@ -27,16 +27,18 @@ char *gbuf;
 int gidx;
 
 
-MODULE_AUTHOR("Your Name Here"); /** TODO: fill in your name **/
+MODULE_AUTHOR("Corey Han"); /** TODO: fill in your name **/
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct aesd_dev aesd_device;
 
-static int aesd _trim(struct scull_dev *dev)
+static void aesd_trim(struct aesd_dev *dev)
 {
+    int off = 0;
+
     for (off=0; off<AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; off++) {
-        if (aesd_device.cir_buf.entry[off].buffptr != NULL)
-            kfree(aesd_device.cir_buf.entry[off].buffptr);
+        if (dev->cir_buf.entry[off].buffptr != NULL)
+            kfree(dev->cir_buf.entry[off].buffptr);
     }
 }
 
@@ -202,14 +204,13 @@ int aesd_init_module(void)
 void aesd_cleanup_module(void)
 {
     dev_t devno = MKDEV(aesd_major, aesd_minor);
-    int off = 0;
 
     cdev_del(&aesd_device.cdev);
 
     /**
      * TODO: cleanup AESD specific poritions here as necessary
      */
-
+    aesd_trim(&aesd_device);
     unregister_chrdev_region(devno, 1);
     kfree(gbuf);
     PDEBUG("module is unloaded");
