@@ -186,13 +186,7 @@ static void socket_service(int server_fd)
 
     memset(&sev, 0, sizeof(struct sigevent));
 
-    finfo.fd = open(tmp_file, O_RDWR | O_CREAT | O_TRUNC, 0664);
-    if (finfo.fd == -1) {
-        syslog(LOG_ERR, "Open file error: %s", strerror(errno));
-        ERROR_LOG("Open file errno: %d, meaning: %s", errno, strerror(errno));
-        exit(-1);
-    }
-
+    finfo.fd = 0;
     if (pthread_mutex_init(&finfo.mtx, NULL) != 0) {
         syslog(LOG_ERR, "init mutex error: %s", strerror(errno));
         ERROR_LOG("init mutex errno: %d, meaning: %s", errno, strerror(errno));
@@ -237,6 +231,14 @@ static void socket_service(int server_fd)
             exit(-1);
         }
 
+        if (finfo.fd == 0) {
+            finfo.fd = open(tmp_file, O_RDWR | O_CREAT | O_TRUNC, 0664);
+            if (finfo.fd == -1) {
+                syslog(LOG_ERR, "Open file error: %s", strerror(errno));
+                ERROR_LOG("Open file errno: %d, meaning: %s", errno, strerror(errno));
+                exit(-1);
+            }
+        }
         params->info = &finfo;
         params->complete_flag = false;
         pthread_create(&node->id, NULL, handle_connection, params);
@@ -261,7 +263,8 @@ static void socket_service(int server_fd)
     }
     free(head);
 
-    close(finfo.fd);
+    if (finfo.fd != 0)
+        close(finfo.fd);
 #if !defined(USE_AESD_CHAR_DEVICE)
     remove(tmp_file);
 #endif
