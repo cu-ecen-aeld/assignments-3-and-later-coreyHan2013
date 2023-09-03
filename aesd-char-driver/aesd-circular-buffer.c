@@ -58,6 +58,20 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
     return NULL;
 }
 
+unsigned int get_offset(struct aesd_circular_buffer *buffer, size_t word_offset)
+{
+    unsigned int offset = 0;
+    int tmp_offs = buffer->out_offs;
+    while (word_offset > 0) {
+	    offset += buffer->entry[tmp_offs].size;
+	    word_offset--;
+	    tmp_offs++;
+	    if (tmp_offs == AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
+		    tmp_offs = 0;
+    }
+    return offset;
+}
+
 /**
 * Adds entry @param add_entry to @param buffer in the location specified in buffer->in_offs.
 * If the buffer was already full, overwrites the oldest entry and advances buffer->out_offs to the

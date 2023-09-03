@@ -19,6 +19,7 @@
 #include <linux/fs.h> // file_operations
 #include <linux/slab.h>
 #include "aesdchar.h"
+#include "aesd_ioctl.h"
 
 #define BUF_SIZE 16384
 int aesd_major =   0; // use dynamic major
@@ -40,6 +41,31 @@ static void aesd_trim(struct aesd_dev *dev)
         if (dev->cir_buf.entry[off].buffptr != NULL)
             kfree(dev->cir_buf.entry[off].buffptr);
     }
+}
+
+static loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
+{
+    loff_t newpos;
+
+    switch(whence) {
+    case 0: /* SEEK_SET */
+        newpos = off;
+        break;
+
+    case 1: /* SEEK_CUR */
+        newpos = filp->f_pos + off;
+        break;
+
+    case 2: /* SEEK_END */
+        newpos = dev->size + off;
+        break;
+
+    default: /* can't happen */
+        return -EINVAL;
+    }
+    if (newpos < 0) return -EINVAL;
+    filp->f_pos = newpos;
+    return newpos;
 }
 
 int aesd_open(struct inode *inode, struct file *filp)
@@ -93,6 +119,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
         goto out;
     }
     *f_pos += count;
+    if (dev->size < *f_pos)
+        dev->size = *f_pos;
     retval = count;
 
 out:
@@ -145,10 +173,47 @@ out:
     mutex_unlock(&dev->lock);
     return retval;
 }
+
+long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+    int retval = 0;
+	int new_pos = 0;
+	struct aesd_seekto *cmd_offset;
+    struct aesd_dev *dev = filp->private_data;
+
+    /*
+     * extract the type and number bitfields, and don't decode
+     * wrong cmds: return ENOTTY (inappropriate ioctl) before access_ok()
+     */
+    if (_IOC_TYPE(cmd) != AESD_IOC_MAGIC) return -ENOTTY;
+    if (_IOC_NR(cmd) > AESDCHAR_IOC_MAXNR) return -ENOTTY;
+
+    /*
+     * the direction is a bitmask, and VERIFY_WRITE catches R/W
+     * transfers. `Type' is user-oriented, while
+     * access_ok is kernel-oriented, so the concept of "read" and
+     * "write" is reversed
+     */
+	cmd_offset = (struct aesd_seekto*)arg;
+    switch(cmd) {
+    case AESDCHAR_IOCSEEKTO:
+		new_pos += get_offset(&dev->cir_buf, cmd_offset->write_cmd);
+		filp->f_pos = new_pos + cmd_offset->write_cmd_offset;
+		break;
+
+	default:  /* redundant, as cmd was checked against MAXNR */
+        return -ENOTTY;
+    }
+    return retval;
+}
+
+
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
+    .llseek =   aesd_llseek,
     .read =     aesd_read,
     .write =    aesd_write,
+    .unlocked_ioctl = aesd_ioctl,
     .open =     aesd_open,
     .release =  aesd_release,
 };

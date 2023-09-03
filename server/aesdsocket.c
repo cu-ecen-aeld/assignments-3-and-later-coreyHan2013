@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <time.h>
+#include "../aesd-char-driver/aesd_ioctl.h"
 
 #define PORT 9000
 #define BUF_SIZE 65535
@@ -27,6 +28,7 @@ const char *tmp_file = "/dev/aesdchar";
 #else
 const char *tmp_file = "/var/tmp/aesdsocketdata";
 #endif
+const char *SEEK_CMD = "AESDCHAR_IOCSEEKTO";
 
 volatile bool caught_sig = false;
 
@@ -47,8 +49,6 @@ struct thread_node {
   struct thread_param param;
   struct thread_node *next;
 };
-
-
 
 static void signal_handler(int signal_number)
 {
@@ -74,12 +74,14 @@ static void set_signal_handler()
     }
 }
 
+
 static void *handle_connection(void *arg)
 {
     struct thread_param *param = (struct thread_param *)arg;
     char ipstr[INET6_ADDRSTRLEN];;
     char *buffer;
     ssize_t recv_len, read_len;
+    struct aesd_seekto seek_cmd;
 
     buffer = (char *)malloc(BUF_SIZE);
     memset(buffer, 0, BUF_SIZE);
@@ -114,13 +116,20 @@ static void *handle_connection(void *arg)
         if (pthread_mutex_lock(&param->info->mtx) != 0)
             ERROR_LOG("pthread_mutex_lock failed");
 
-        lseek(param->info->fd, 0, SEEK_END);
-        write(param->info->fd, buffer, recv_len);
+        if (strncmp(buffer, SEEK_CMD, strlen(SEEK_CMD)) == 0) {
+            sscanf(buffer+strlen(SEEK_CMD), ":%d,%d", &seek_cmd.write_cmd, &seek_cmd.write_cmd_offset);
+            DEBUG_LOG("seekcommand: cmd=%d, cmd_off=%d", seek_cmd.write_cmd, seek_cmd.write_cmd_offset);
+            ioctl(param->info->fd, AESDCHAR_IOCSEEKTO, &seek_cmd);
+        } else {
+            lseek(param->info->fd, 0, SEEK_END);
+            write(param->info->fd, buffer, recv_len);
+            lseek(param->info->fd, 0, SEEK_SET);
+        }
+
         if (pthread_mutex_unlock(&param->info->mtx) != 0)
             ERROR_LOG("pthread_mutex_unlock failed");
         memset(buffer, 0, recv_len);
 
-        lseek(param->info->fd, 0, SEEK_SET);
         start = 0;
         while (true) {
             while (true) {
