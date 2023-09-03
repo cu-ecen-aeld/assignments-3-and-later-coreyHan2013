@@ -46,6 +46,7 @@ static void aesd_trim(struct aesd_dev *dev)
 static loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
 {
     loff_t newpos;
+    struct aesd_dev *dev = filp->private_data;
 
     switch(whence) {
     case 0: /* SEEK_SET */
